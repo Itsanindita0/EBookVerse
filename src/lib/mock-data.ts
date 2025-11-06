@@ -81,4 +81,44 @@ export const mockBooks: Book[] = [
     rating: 4.8,
     description: "A novel about a young boy's adventures on the Mississippi River with a runaway slave.",
   },
+  {
+    id: "236", // The Jungle Book
+    title: "The Jungle Book",
+    author: "Rudyard Kipling",
+    coverImage: "https://picsum.photos/seed/indianbook1/300/450",
+    imageHint: "jungle animals",
+    genre: "Adventure",
+    rating: 4.7,
+    description: "A collection of stories about the adventures of a boy named Mowgli who is raised by wolves in the Indian jungle.",
+  },
+  {
+    id: "7164", // Gitanjali
+    title: "Gitanjali",
+    author: "Rabindranath Tagore",
+    coverImage: "https://picsum.photos/seed/indianbook2/300/450",
+    imageHint: "spiritual poetry",
+    genre: "Poetry",
+    rating: 4.9,
+    description: "A collection of prose poems, for which Tagore was awarded the Nobel Prize in Literature.",
+  },
+  {
+    id: "2226", // Kim
+    title: "Kim",
+    author: "Rudyard Kipling",
+    coverImage: "https://picsum.photos/seed/indianbook3/300/450",
+    imageHint: "indian boy",
+    genre: "Adventure",
+    rating: 4.6,
+    description: "An adventure novel about the orphan son of an Irish soldier who grows up in British India.",
+  },
+  {
+    id: "7166", // The Home and the World
+    title: "The Home and the World",
+    author: "Rabindranath Tagore",
+    coverImage: "https://picsum.photos/seed/indianbook4/300/450",
+    imageHint: "bengali couple",
+    genre: "Historical",
+    rating: 4.5,
+    description: "A novel exploring the complexities of tradition, modernity, and nationalism in early 20th-century Bengal.",
+  },
 ];
