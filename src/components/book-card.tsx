@@ -30,7 +30,7 @@ export function BookCard({ book }: BookCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden h-full group border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-lg">
       <CardHeader className="p-0 relative overflow-hidden">
-        <Link href={`/books/${book.id}`}>
+        <Link href={`/read/${book.id}`}>
           <Image
             src={book.coverImage}
             alt={`Cover of ${book.title}`}
@@ -47,7 +47,7 @@ export function BookCard({ book }: BookCardProps) {
         </Badge>
         <CardTitle className="text-lg leading-tight font-headline">
           <Link
-            href={`/books/${book.id}`}
+            href={`/read/${book.id}`}
             className="hover:text-primary transition-colors line-clamp-2"
           >
             {book.title}

@@ -16,7 +16,7 @@ type BookListItemProps = {
 export function BookListItem({ book }: BookListItemProps) {
   return (
     <Card className="flex items-center p-4 hover:bg-muted/50 transition-colors w-full">
-      <Link href={`/books/${book.id}`} className="flex-shrink-0">
+      <Link href={`/read/${book.id}`} className="flex-shrink-0">
         <Image
           src={book.coverImage}
           alt={`Cover of ${book.title}`}
@@ -32,7 +32,7 @@ export function BookListItem({ book }: BookListItemProps) {
                 {book.genre}
             </Badge>
             <h3 className="font-semibold line-clamp-2 font-headline text-lg">
-                <Link href={`/books/${book.id}`} className="hover:text-primary transition-colors">
+                <Link href={`/read/${book.id}`} className="hover:text-primary transition-colors">
                     {book.title}
                 </Link>
             </h3>
