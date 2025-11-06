@@ -16,7 +16,7 @@ import Link from "next/link";
 export default function DashboardPage() {
   const continueReading = mockBooks.slice(0, 3);
   const recommendedBooks = [...mockBooks].reverse();
-  const recentlyAdded = mockBooks.slice(3, 6);
+  const recentlyAdded = mockBooks.slice(3, 9);
 
   return (
     <div className="space-y-8">
@@ -115,11 +115,24 @@ export default function DashboardPage() {
       {/* Recently Added */}
        <div>
         <h2 className="text-2xl font-bold font-headline mb-4">Recently Added</h2>
-        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {recentlyAdded.map((book) => (
-            <BookCard key={book.id} book={book} />
-          ))}
-        </div>
+        <Carousel
+          opts={{
+            align: "start",
+          }}
+          className="w-full"
+        >
+          <CarouselContent>
+            {recentlyAdded.map((book) => (
+              <CarouselItem key={book.id} className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
+                <div className="p-1">
+                  <BookCard book={book} />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="ml-12" />
+          <CarouselNext className="mr-12" />
+        </Carousel>
       </div>
 
     </div>
