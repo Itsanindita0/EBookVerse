@@ -30,11 +30,12 @@ const processAndPaginateContent = (text: string, charsPerPage: number): string[]
   for (const marker of startMarkers) {
     const foundIndex = cleanedText.indexOf(marker);
     if (foundIndex !== -1) {
-      startIndex = cleanedText.indexOf('***', foundIndex + marker.length);
-      if (startIndex !== -1) {
-        startIndex += 3; // Move past the '***'
-        break;
+      // Find the end of the line containing the marker
+      const endOfLine = cleanedText.indexOf('\n', foundIndex);
+      if (endOfLine !== -1) {
+          startIndex = endOfLine + 1;
       }
+      break;
     }
   }
   if (startIndex !== -1) {
@@ -55,6 +56,9 @@ const processAndPaginateContent = (text: string, charsPerPage: number): string[]
   if (endIndex !== -1) {
     cleanedText = cleanedText.substring(0, endIndex);
   }
+
+  // Basic HTML tag removal in case the proxy returns HTML
+  cleanedText = cleanedText.replace(/<[^>]*>?/gm, '');
 
   cleanedText = cleanedText.trim();
 
@@ -141,6 +145,11 @@ export default function ReadPage() {
 
         const text = await response.text();
         const paginated = processAndPaginateContent(text, charsPerPage);
+
+        if (paginated.length === 0) {
+           throw new Error('Book content could not be processed. It might be empty or in an unsupported format.');
+        }
+
         setPages(paginated);
 
         if (!isLoadingProgress && readingProgress) {
