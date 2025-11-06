@@ -100,7 +100,7 @@ export default function DashboardPage() {
         >
           <CarouselContent>
             {recommendedBooks.map((book) => (
-              <CarouselItem key={book.id} className="sm:basis-1/2 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+              <CarouselItem key={book.id} className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
                 <div className="p-1">
                   <BookCard book={book} />
                 </div>
