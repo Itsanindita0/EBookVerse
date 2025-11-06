@@ -10,6 +10,7 @@
  * - /ebooks/{ebookId}: Stores public ebook metadata, readable by everyone.
  * - /users/{userId}/library/{ebookId}: Represents a user's purchased books, accessible only to the owning user.
  * - /users/{userId}/cart/{ebookId}: Represents a user's shopping cart, accessible only to the owning user.
+ * - /users/{userId}/orders/{orderId}: Represents a user's past orders, accessible only to the owning user.
  * - /ebooks/{ebookId}/reviews/{reviewId}: Stores reviews for ebooks, accessible for read to everyone, only authenticated users can write.
  *
  * Key Security Decisions:
@@ -111,19 +112,29 @@ service cloud.firestore {
      * @principle Enforces user-ownership for cart data.
      */
     match /users/{userId}/cart/{ebookId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+        return request.auth != null && request.auth.uid == userId;
       }
 
       allow get, list, create, update, delete: if isOwner(userId);
+    }
+    
+    /**
+     * @description Rules for the /users/{userId}/orders collection. Enforces user-ownership.
+     * @path /users/{userId}/orders/{orderId}
+     * @allow (get, list, create) - Allows a user to view their own orders and create new ones.
+     * @deny (update, delete) - Denies modification or deletion of past orders.
+     * @principle Enforces user-ownership for order history.
+     */
+    match /users/{userId}/orders/{orderId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if false; // Past orders should be immutable
     }
 
 
