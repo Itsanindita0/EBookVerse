@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { useAuth, useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -63,9 +63,11 @@ export default function ReadPage() {
   const { data: readingProgress, isLoading: isLoadingProgress } = useDoc(readingProgressRef);
 
   useEffect(() => {
-    if (!isLoadingProgress && readingProgress) {
-        const pageFromProgress = Math.floor(((readingProgress.currentPage ?? 0) / (readingProgress.totalPages ?? 1)) * pages.length);
-        setCurrentPage(pageFromProgress);
+    if (!isLoadingProgress && readingProgress && pages.length > 0) {
+        // Restore current page based on percentage to handle pagination changes
+        const pageFromProgress = Math.floor(((readingProgress.percentage ?? 0) / 100) * pages.length);
+        const validPage = Math.max(0, Math.min(pageFromProgress, pages.length - 1));
+        setCurrentPage(validPage);
     }
   }, [readingProgress, isLoadingProgress, pages.length]);
   
@@ -91,13 +93,22 @@ export default function ReadPage() {
         const paginated = paginateContent(text, charsPerPage);
         setPages(paginated);
 
+        if (!isLoadingProgress && readingProgress) {
+            const pageFromProgress = Math.floor(((readingProgress.percentage ?? 0) / 100) * paginated.length);
+            const validPage = Math.max(0, Math.min(pageFromProgress, paginated.length - 1));
+            setCurrentPage(validPage);
+        } else {
+            setCurrentPage(0);
+        }
+
+
     } catch (e: any) {
         console.error("Failed to fetch book content:", e);
         setError("Could not load the book content. Please try again later.");
     } finally {
         setIsLoading(false);
     }
-  }, [charsPerPage]);
+  }, [charsPerPage, isLoadingProgress, readingProgress]);
 
   useEffect(() => {
     if (id) {
@@ -105,26 +116,33 @@ export default function ReadPage() {
     }
   }, [id, fetchBookContent]);
 
-  const updateReadingProgress = useCallback((page: number, total: number) => {
-    if (!readingProgressRef || total === 0) return;
+  const updateReadingProgress = useCallback(() => {
+    if (!readingProgressRef || pages.length === 0 || !user) return;
     
-    const percentage = Math.round(((page + 1) / total) * 100);
+    const percentage = Math.round(((currentPage + 1) / pages.length) * 100);
     const progressData = {
-      userId: user?.uid,
+      userId: user.uid,
       ebookId: id,
-      currentPage: page + 1,
-      totalPages: total,
+      currentPage: currentPage + 1, // 1-based for storage
+      totalPages: pages.length,
       percentage: percentage,
       lastReadAt: new Date().toISOString(),
     };
     setDocumentNonBlocking(readingProgressRef, progressData, { merge: true });
-  }, [readingProgressRef, id, user?.uid]);
+  }, [readingProgressRef, currentPage, pages.length, id, user]);
   
   useEffect(() => {
-    if (pages.length > 0) {
-      updateReadingProgress(currentPage, pages.length);
-    }
-  }, [currentPage, pages.length, updateReadingProgress]);
+    // Debounce the update to avoid excessive writes
+    const handler = setTimeout(() => {
+        if (pages.length > 0 && !isLoading) {
+            updateReadingProgress();
+        }
+    }, 1000); // Update after 1 second of inactivity
+
+    return () => {
+        clearTimeout(handler);
+    };
+  }, [currentPage, pages.length, isLoading, updateReadingProgress]);
 
   if (!book) {
     return notFound();
@@ -212,7 +230,7 @@ export default function ReadPage() {
                 <Button
                     variant="outline"
                     onClick={handleNextPage}
-                    disabled={currentPage === totalPages - 1 || pageIsLoading}
+                    disabled={currentPage >= totalPages - 1 || pageIsLoading}
                 >
                     Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
