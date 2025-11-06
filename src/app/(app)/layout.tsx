@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
   Book,
   Home,
   Library,
+  Loader2,
   Menu,
   Search,
   Settings,
@@ -26,9 +27,15 @@ import {
 } from "lucide-react";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import placeholderImagesData from "@/lib/placeholder-images.json";
+import { useAuth, useUser } from "@/firebase";
+import { useEffect } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/library", label: "My Library", icon: Library },
@@ -39,6 +46,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const userAvatar = placeholderImagesData.placeholderImages.find(
     (p) => p.id === "user-avatar"
   );
+  
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login");
+    }
+  }, [isUserLoading, user, router]);
+
+  const handleLogout = () => {
+    auth.signOut();
+    router.push('/');
+  };
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -129,8 +155,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
                 <Avatar>
-                  {userAvatar && <AvatarImage src={userAvatar.imageUrl} />}
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={user.photoURL ?? userAvatar?.imageUrl} />
+                  <AvatarFallback>{user.email?.[0]?.toUpperCase() ?? "U"}</AvatarFallback>
                 </Avatar>
                 <span className="sr-only">Toggle user menu</span>
               </Button>
@@ -151,7 +177,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
