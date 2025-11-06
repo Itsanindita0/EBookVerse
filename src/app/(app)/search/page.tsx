@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -149,7 +150,7 @@ export default function SearchPage() {
             </div>
           ) : filteredAndSortedBooks.length > 0 ? (
             layout === 'grid' ? (
-              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {filteredAndSortedBooks.map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
