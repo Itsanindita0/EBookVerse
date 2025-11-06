@@ -16,8 +16,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { List, Grid, Search, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { searchBooks } from '@/ai/flows/search-books-flow';
 import { useDebounce } from 'use-debounce';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, getDocs, Query } from 'firebase/firestore';
+import { mockBooks } from '@/lib/mock-data';
 
 type SortOption = 'title-asc' | 'title-desc' | 'author-asc' | 'author-desc';
 type Layout = 'grid' | 'list';
@@ -27,35 +29,50 @@ export default function SearchPage() {
   const [sortOption, setSortOption] = useState<SortOption>('title-asc');
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [layout, setLayout] = useState<Layout>('grid');
-  const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
-  const handleSearch = useCallback(async (query: string) => {
-    setIsLoading(true);
-    try {
-      const result = await searchBooks({ query });
-      setBooks(result.books);
-    } catch (error) {
-      console.error("Error searching books:", error);
-      setBooks([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    handleSearch(debouncedSearchTerm);
-  }, [debouncedSearchTerm, handleSearch]);
+  const booksQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    let q: Query = collection(firestore, 'ebooks');
+    if (debouncedSearchTerm) {
+      // Note: Firestore doesn't support full-text search natively.
+      // This is a simple prefix search. For more complex scenarios,
+      // a third-party search service like Algolia or Typesense is recommended.
+      // We are querying by title here. A more robust solution would involve
+      // querying by author as well, but that requires composite indexes.
+       q = query(q, where('title', '>=', debouncedSearchTerm), where('title', '<=', debouncedSearchTerm + '\uf8ff'));
+    }
+    return q;
+  }, [firestore, debouncedSearchTerm]);
+
+  // If there's no search term, load all books.
+  const allBooksQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'ebooks');
+  }, [firestore]);
+
+
+  const { data: allBooks, isLoading: isLoadingAllBooks } = useCollection<Book>(allBooksQuery, {
+      skip: !!debouncedSearchTerm
+  });
+  
+  const { data: searchedBooks, isLoading: isLoadingSearch } = useCollection<Book>(booksQuery, {
+      skip: !debouncedSearchTerm
+  });
+
+  const books = debouncedSearchTerm ? searchedBooks : allBooks;
+  const isLoading = isLoadingAllBooks || isLoadingSearch;
+
 
   const genres = useMemo(() => {
-    if (books.length === 0) return ['all'];
-    const allGenres = new Set(books.map((book) => book.genre));
+    const allGenres = new Set(allBooks?.map((book) => book.genre) ?? []);
     return ['all', ...Array.from(allGenres)];
-  }, [books]);
+  }, [allBooks]);
 
   const filteredAndSortedBooks = useMemo(() => {
-    let filtered = [...books];
+    let filtered = books ? [...books] : [];
 
     // Filter by genre
     if (selectedGenre !== 'all') {
@@ -80,6 +97,29 @@ export default function SearchPage() {
 
     return filtered;
   }, [books, sortOption, selectedGenre]);
+  
+  // A one-time effect to populate Firestore with mock data if the collection is empty.
+  useEffect(() => {
+    async function seedDatabase() {
+        if (firestore) {
+            const ebooksCollection = collection(firestore, 'ebooks');
+            const snapshot = await getDocs(ebooksCollection);
+            if (snapshot.empty) {
+                console.log('No books found, seeding database...');
+                const { setDoc, doc } = await import('firebase/firestore');
+                const writeBatch = (await import('firebase/firestore')).writeBatch(firestore);
+                mockBooks.forEach((book) => {
+                    const bookRef = doc(ebooksCollection, book.id);
+                    writeBatch.set(bookRef, book);
+                });
+                await writeBatch.commit();
+                console.log('Database seeded with mock books.');
+            }
+        }
+    }
+    seedDatabase();
+  }, [firestore]);
+
 
   return (
     <div className="space-y-6">
@@ -112,7 +152,7 @@ export default function SearchPage() {
         <div className="relative w-full md:w-1/2 lg:w-1/3">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search all books by title or author..."
+            placeholder="Search all books by title..."
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -150,7 +190,7 @@ export default function SearchPage() {
             </div>
           ) : filteredAndSortedBooks.length > 0 ? (
             layout === 'grid' ? (
-              <div className="grid gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                 {filteredAndSortedBooks.map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
