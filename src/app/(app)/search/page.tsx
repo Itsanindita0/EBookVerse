@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Book } from '@/components/book-card';
 import { BookCard } from '@/components/book-card';
 import { BookListItem } from '@/components/book-list-item';
@@ -15,17 +16,18 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { List, Grid, Search, Loader2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDebounce } from 'use-debounce';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, Query } from 'firebase/firestore';
-import { mockBooks } from '@/lib/mock-data';
+import { collection, query, where, Query } from 'firebase/firestore';
 
 type SortOption = 'title-asc' | 'title-desc' | 'author-asc' | 'author-desc';
 type Layout = 'grid' | 'list';
 
-export default function SearchPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+function SearchPageContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') ?? '';
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [sortOption, setSortOption] = useState<SortOption>('title-asc');
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [layout, setLayout] = useState<Layout>('grid');
@@ -33,53 +35,41 @@ export default function SearchPage() {
 
   const firestore = useFirestore();
 
+  useEffect(() => {
+    setSearchTerm(initialQuery);
+  }, [initialQuery]);
+
   const booksQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     let q: Query = collection(firestore, 'ebooks');
+    
+    // This is a simple case-sensitive prefix search.
+    // For a more robust search, you would typically use a dedicated search service 
+    // like Algolia or Typesense, which can handle case-insensitivity, full-text search, and typos.
     if (debouncedSearchTerm) {
-      // Note: Firestore doesn't support full-text search natively.
-      // This is a simple prefix search. For more complex scenarios,
-      // a third-party search service like Algolia or Typesense is recommended.
-      // We are querying by title here. A more robust solution would involve
-      // querying by author as well, but that requires composite indexes.
-       q = query(q, where('title', '>=', debouncedSearchTerm), where('title', '<=', debouncedSearchTerm + '\uf8ff'));
+      const endTerm = debouncedSearchTerm.slice(0, -1) + String.fromCharCode(debouncedSearchTerm.charCodeAt(debouncedSearchTerm.length - 1) + 1);
+      q = query(q, 
+        where('title', '>=', debouncedSearchTerm),
+        where('title', '<', endTerm)
+      );
     }
     return q;
   }, [firestore, debouncedSearchTerm]);
 
-  // If there's no search term, load all books.
-  const allBooksQuery = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return collection(firestore, 'ebooks');
-  }, [firestore]);
-
-
-  const { data: allBooks, isLoading: isLoadingAllBooks } = useCollection<Book>(allBooksQuery, {
-      skip: !!debouncedSearchTerm
-  });
-  
-  const { data: searchedBooks, isLoading: isLoadingSearch } = useCollection<Book>(booksQuery, {
-      skip: !debouncedSearchTerm
-  });
-
-  const books = debouncedSearchTerm ? searchedBooks : allBooks;
-  const isLoading = isLoadingAllBooks || isLoadingSearch;
-
+  const { data: books, isLoading } = useCollection<Book>(booksQuery);
 
   const genres = useMemo(() => {
-    const allGenres = new Set(allBooks?.map((book) => book.genre) ?? []);
+    const allGenres = new Set(books?.map((book) => book.genre) ?? []);
     return ['all', ...Array.from(allGenres)];
-  }, [allBooks]);
+  }, [books]);
 
   const filteredAndSortedBooks = useMemo(() => {
     let filtered = books ? [...books] : [];
 
-    // Filter by genre
     if (selectedGenre !== 'all') {
       filtered = filtered.filter((book) => book.genre === selectedGenre);
     }
 
-    // Sort books
     filtered.sort((a, b) => {
       switch (sortOption) {
         case 'title-asc':
@@ -98,29 +88,6 @@ export default function SearchPage() {
     return filtered;
   }, [books, sortOption, selectedGenre]);
   
-  // A one-time effect to populate Firestore with mock data if the collection is empty.
-  useEffect(() => {
-    async function seedDatabase() {
-        if (firestore) {
-            const ebooksCollection = collection(firestore, 'ebooks');
-            const snapshot = await getDocs(ebooksCollection);
-            if (snapshot.empty) {
-                console.log('No books found, seeding database...');
-                const { setDoc, doc } = await import('firebase/firestore');
-                const writeBatch = (await import('firebase/firestore')).writeBatch(firestore);
-                mockBooks.forEach((book) => {
-                    const bookRef = doc(ebooksCollection, book.id);
-                    writeBatch.set(bookRef, book);
-                });
-                await writeBatch.commit();
-                console.log('Database seeded with mock books.');
-            }
-        }
-    }
-    seedDatabase();
-  }, [firestore]);
-
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -212,4 +179,16 @@ export default function SearchPage() {
       </Tabs>
     </div>
   );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+        <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
+  )
 }

@@ -28,15 +28,18 @@ import {
 } from "lucide-react";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import placeholderImagesData from "@/lib/placeholder-images.json";
-import { useAuth, useUser } from "@/firebase";
-import { useEffect } from "react";
+import { useAuth, useUser, useFirestore } from "@/firebase";
+import { useEffect, useState } from "react";
 import {motion} from 'framer-motion';
+import { mockBooks } from "@/lib/mock-data";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [searchQuery, setSearchQuery] = useState('');
   
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -51,10 +54,42 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isUserLoading, user, router]);
 
+  // A one-time effect to populate Firestore with mock data if the collection is empty.
+  useEffect(() => {
+    async function seedDatabase() {
+        if (firestore) {
+            const { getDocs, collection } = await import('firebase/firestore');
+            const ebooksCollection = collection(firestore, 'ebooks');
+            const snapshot = await getDocs(ebooksCollection);
+            if (snapshot.empty) {
+                console.log('No books found, seeding database...');
+                const { setDoc, doc, writeBatch } = await import('firebase/firestore');
+                const batch = writeBatch(firestore);
+                mockBooks.forEach((book) => {
+                    const bookRef = doc(ebooksCollection, book.id);
+                    batch.set(bookRef, book);
+                });
+                await batch.commit();
+                console.log('Database seeded with mock books.');
+                // Optionally, trigger a refresh or state update if needed
+            }
+        }
+    }
+    seedDatabase();
+  }, [firestore]);
+
+
   const handleLogout = () => {
     auth.signOut();
     router.push('/');
   };
+  
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }
 
   if (isUserLoading || !user) {
     return (
@@ -137,13 +172,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
           <div className="w-full flex-1">
-            <form>
+            <form onSubmit={handleSearch}>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search books..."
                   className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </form>
