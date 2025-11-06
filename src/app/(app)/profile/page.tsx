@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from '@/firebase';
@@ -23,7 +24,7 @@ export default function ProfilePage() {
       <div>
         <h1 className="text-3xl font-bold font-headline">Your Profile</h1>
         <p className="text-muted-foreground">
-          View and manage your account details.
+          View and manage your account details and payout information.
         </p>
       </div>
 
@@ -50,7 +51,7 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle>Account Information</CardTitle>
             <CardDescription>
-              Update your display name and profile picture.
+              Update your display name, profile picture, and payout details.
             </CardDescription>
           </CardHeader>
           <CardContent>

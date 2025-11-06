@@ -31,8 +31,10 @@ const ACCEPTED_BOOK_TYPES = ['application/pdf', 'application/epub+zip'];
 
 const formSchema = z.object({
   title: z.string().min(2, { message: 'Title must be at least 2 characters.' }).max(100),
+  author: z.string().min(2, { message: 'Author name must be at least 2 characters.' }).max(100),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }).max(1000),
   genre: z.string().min(2, { message: 'Genre must be at least 2 characters.' }).max(50),
+  price: z.coerce.number().min(0, { message: 'Price must be a positive number.' }),
   coverImage: z
     .any()
     .refine((files) => files?.length == 1, 'Cover image is required.')
@@ -50,8 +52,10 @@ export default function UploadPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
+      author: '',
       description: '',
       genre: '',
+      price: 0.0,
       coverImage: undefined,
       bookFile: undefined,
     },
@@ -101,6 +105,19 @@ export default function UploadPage() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="author"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Author Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="description"
@@ -118,19 +135,34 @@ export default function UploadPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="genre"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Genre</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Sci-Fi, Fantasy, Romance" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <FormField
+                    control={form.control}
+                    name="genre"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Genre</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g., Sci-Fi, Fantasy, Romance" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Price ($)</FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="e.g., 9.99" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="coverImage"

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save } from 'lucide-react';
 import { useUser } from '@/firebase';
+import { Textarea } from './ui/textarea';
+import { Separator } from './ui/separator';
 
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
@@ -29,6 +32,7 @@ const formSchema = z.object({
       (files) => !files || files.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
       '.jpg, .jpeg, .png and .webp files are accepted.'
     ),
+  payoutDetails: z.string().optional(),
 });
 
 export function ProfileForm() {
@@ -40,13 +44,14 @@ export function ProfileForm() {
     defaultValues: {
       displayName: user?.displayName ?? '',
       photo: undefined,
+      payoutDetails: '',
     },
   });
 
   const { isSubmitting } = form.formState;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // TODO: Implement actual profile update logic
+    // TODO: Implement actual profile update logic, including payout details
     console.log(values);
     toast({
       title: 'Profile Updated!',
@@ -86,6 +91,31 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
+        
+        <Separator />
+        
+        <div>
+            <h3 className="text-lg font-medium">Payout Information</h3>
+            <p className="text-sm text-muted-foreground">This is where payments for your book sales will be sent.</p>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="payoutDetails"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Account Details</FormLabel>
+              <FormControl>
+                <Textarea placeholder="e.g., Bank Name, Account Number, PayPal email, etc." {...field} className="min-h-[120px]" />
+              </FormControl>
+              <FormDescription>
+                Enter the account details where you'd like to receive payments. This is a placeholder and is not stored securely.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? (
