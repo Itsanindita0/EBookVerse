@@ -1,10 +1,10 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import type { Book } from '@/components/book-card';
 import { BookCard } from '@/components/book-card';
 import { BookListItem } from '@/components/book-list-item';
-import { mockBooks } from '@/lib/mock-data';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -14,25 +14,38 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { List, Grid, Search } from 'lucide-react';
+import { List, Grid, Search, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 type SortOption = 'title-asc' | 'title-desc' | 'author-asc' | 'author-desc';
 type Layout = 'grid' | 'list';
 
 export default function LibraryPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const libraryQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return collection(firestore, 'users', user.uid, 'library');
+  }, [firestore, user?.uid]);
+  
+  const { data: libraryBooks, isLoading: isLoadingLibrary } = useCollection<Book>(libraryQuery);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('title-asc');
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [layout, setLayout] = useState<Layout>('grid');
 
   const genres = useMemo(() => {
-    const allGenres = new Set(mockBooks.map((book) => book.genre));
+    if (!libraryBooks) return ['all'];
+    const allGenres = new Set(libraryBooks.map((book) => book.genre));
     return ['all', ...Array.from(allGenres)];
-  }, []);
+  }, [libraryBooks]);
 
   const filteredAndSortedBooks = useMemo(() => {
-    let books = [...mockBooks];
+    let books = libraryBooks ? [...libraryBooks] : [];
 
     // Filter by genre
     if (selectedGenre !== 'all') {
@@ -65,7 +78,15 @@ export default function LibraryPage() {
     });
 
     return books;
-  }, [searchTerm, sortOption, selectedGenre]);
+  }, [libraryBooks, searchTerm, sortOption, selectedGenre]);
+  
+  if (isLoadingLibrary) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -146,8 +167,8 @@ export default function LibraryPage() {
                 )
             ) : (
                 <div className="text-center py-16">
-                    <p className="text-lg font-semibold">No books found.</p>
-                    <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+                    <p className="text-lg font-semibold">Your library is empty.</p>
+                    <p className="text-muted-foreground">Add books from the browse section to get started.</p>
                 </div>
             )}
         </TabsContent>

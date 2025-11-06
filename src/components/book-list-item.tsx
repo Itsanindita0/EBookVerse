@@ -1,3 +1,6 @@
+
+'use client';
+
 import Image from "next/image";
 import Link from "next/link";
 import { Star, Bookmark, MoreVertical } from "lucide-react";
@@ -8,12 +11,37 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Book } from "./book-card";
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 type BookListItemProps = {
   book: Book;
 };
 
 export function BookListItem({ book }: BookListItemProps) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const libraryDocRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid, 'library', book.id);
+  }, [firestore, user?.uid, book.id]);
+
+  const { data: libraryDoc } = useDoc(libraryDocRef);
+
+  const isInLibrary = !!libraryDoc;
+
+  const toggleLibraryStatus = async () => {
+    if (!libraryDocRef) return;
+
+    if (isInLibrary) {
+      await deleteDoc(libraryDocRef);
+    } else {
+      await setDoc(libraryDocRef, book);
+    }
+  };
+  
   return (
     <Card className="flex items-center p-4 hover:bg-muted/50 transition-colors w-full">
       <Link href={`/read/${book.id}`} className="flex-shrink-0">
@@ -57,8 +85,9 @@ export function BookListItem({ book }: BookListItemProps) {
                 size="icon"
                 className="text-muted-foreground hover:text-primary"
                 aria-label="Add to library"
+                onClick={toggleLibraryStatus}
             >
-                <Bookmark className="w-5 h-5" />
+                <Bookmark className={`w-5 h-5 ${isInLibrary ? 'text-primary fill-primary' : ''}`} />
             </Button>
              <Button
                 variant="ghost"
