@@ -29,6 +29,7 @@ import { ModeToggle } from "@/components/layout/mode-toggle";
 import placeholderImagesData from "@/lib/placeholder-images.json";
 import { useAuth, useUser } from "@/firebase";
 import { useEffect } from "react";
+import {motion} from 'framer-motion';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -178,7 +179,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </DropdownMenu>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-auto">
-          {children}
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {children}
+          </motion.div>
         </main>
       </div>
     </div>

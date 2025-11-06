@@ -28,7 +28,7 @@ type BookCardProps = {
 
 export function BookCard({ book }: BookCardProps) {
   return (
-    <Card className="flex flex-col overflow-hidden h-full group border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-lg">
+    <Card className="flex flex-col overflow-hidden h-full group border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1">
       <CardHeader className="p-0 relative overflow-hidden">
         <Link href={`/read/${book.id}`}>
           <Image
