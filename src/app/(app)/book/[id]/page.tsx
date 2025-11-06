@@ -11,16 +11,19 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ShoppingCart, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useParams } from 'next/navigation';
 
-export default function BookDetailPage({ params }: { params: { id: string } }) {
+export default function BookDetailPage() {
+  const params = useParams();
+  const bookId = params.id as string;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const bookRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return doc(firestore, 'ebooks', params.id);
-  }, [firestore, params.id]);
+    if (!firestore || !bookId) return null;
+    return doc(firestore, 'ebooks', bookId);
+  }, [firestore, bookId]);
 
   const { data: book, isLoading: isLoadingBook } = useDoc<Book>(bookRef);
 
