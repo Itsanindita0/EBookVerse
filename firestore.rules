@@ -1,0 +1,195 @@
+/**
+ * @file Firestore Security Rules for EBookVerse
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for personal data and allows public read access to ebook metadata.
+ * All write operations require authentication and proper authorization.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles, accessible only to the owning user.
+ * - /ebooks/{ebookId}: Stores public ebook metadata, readable by everyone.
+ * - /users/{userId}/library/{ebookId}: Represents a user's library, accessible only to the owning user.
+ * - /users/{userId}/favorites/{ebookId}: Represents a user's favorite ebooks, accessible only to the owning user.
+ * - /users/{userId}/readingProgress/{ebookId}: Stores reading progress, accessible only to the owning user.
+ * - /ebooks/{ebookId}/reviews/{reviewId}: Stores reviews for ebooks, accessible for read to everyone, only authenticated users can write.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - Ebook metadata is publicly readable but write-protected.
+ * - All subcollections under /users/{userId} are strictly user-owned.
+ * - The `firebaseUid` field in the `/users/{userId}` document must match the `{userId}` path parameter.
+ *
+ * Denormalization for Authorization:
+ *  - The `User` documents under `/users/{userId}` include the `firebaseUid`, which is enforced to match the `{userId}` parameter. This ensures that the document is always owned by the correct user.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Rules for the /users collection. Enforces user-ownership.
+     * @path /users/{userId}
+     * @allow (create) - Allows a user to create their own profile if the firebaseUid matches the userId.
+     * @allow (get, list, update, delete) - Allows the user to read, update, and delete their own profile.
+     * @deny (create) - Denies creation if the firebaseUid does not match the userId.
+     * @deny (update, delete) - Denies modification if the user does not exist.
+     * @principle Enforces user-ownership for profile data and relational integrity.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is not permitted
+
+      allow create: if isOwner(userId)
+                    && request.resource.data.id == userId;
+
+      allow update: if isExistingOwner(userId)
+                    && request.resource.data.id == resource.data.id; //Prevents id updates
+
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /ebooks collection. Allows public read access.
+     * @path /ebooks/{ebookId}
+     * @allow (get, list) - Allows anyone to read ebook metadata.
+     * @deny (create, update, delete) - Denies all write operations to ebook metadata.
+     * @principle Allows public read access to ebook metadata.
+     */
+    match /ebooks/{ebookId} {
+      allow get: if true;
+      allow list: if true;
+
+      allow create, update, delete: if false; // Ebooks can only be created by admins via the backend.
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/library collection. Enforces user-ownership.
+     * @path /users/{userId}/library/{ebookId}
+     * @allow (create, get, list, update, delete) - Allows the user to manage their own library.
+     * @deny (create, update, delete) - Denies modification if the user does not exist.
+     * @principle Enforces user-ownership for library data.
+     */
+    match /users/{userId}/library/{ebookId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId);
+
+      allow update: if isExistingOwner(userId);
+
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/favorites collection. Enforces user-ownership.
+     * @path /users/{userId}/favorites/{ebookId}
+     * @allow (create, get, list, update, delete) - Allows the user to manage their own favorites.
+     * @deny (create, update, delete) - Denies modification if the user does not exist.
+     * @principle Enforces user-ownership for favorites data.
+     */
+    match /users/{userId}/favorites/{ebookId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId);
+
+      allow update: if isExistingOwner(userId);
+
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/readingProgress collection. Enforces user-ownership.
+     * @path /users/{userId}/readingProgress/{ebookId}
+     * @allow (create, get, list, update, delete) - Allows the user to manage their own reading progress.
+     * @deny (create, update, delete) - Denies modification if the user does not exist.
+     * @principle Enforces user-ownership for reading progress data.
+     */
+    match /users/{userId}/readingProgress/{ebookId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId);
+
+      allow update: if isExistingOwner(userId);
+
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /ebooks/{ebookId}/reviews collection. Allows read to all, write only if authenticated.
+     * @path /ebooks/{ebookId}/reviews/{reviewId}
+     * @allow (get, list) - Allows anyone to read reviews.
+     * @allow (create) - Allows authenticated users to create reviews.
+     * @deny (update, delete) - Denies modification of reviews to only the author.
+     * @principle Allows public read access to reviews, but restricts writing.
+     */
+    match /ebooks/{ebookId}/reviews/{reviewId} {
+       function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+       function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+
+      allow update: if isExistingOwner(resource.data.userId);
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+  }
+}

@@ -1,0 +1,367 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the EBookVerse application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "firebaseUid": {
+          "type": "string",
+          "description": "The Firebase Authentication UID associated with the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of the user's profile photo.",
+          "format": "uri"
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role (e.g., 'user', 'admin')."
+        },
+        "library": {
+          "type": "array",
+          "description": "References to Ebooks in the user's library. (Relationship: User 1:N Ebook)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "favorites": {
+          "type": "array",
+          "description": "References to Ebooks in the user's favorites. (Relationship: User 1:N Ebook)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firebaseUid",
+        "email",
+        "displayName"
+      ]
+    },
+    "Ebook": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Ebook",
+      "type": "object",
+      "description": "Represents an e-book in the EBookVerse application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ebook entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the e-book."
+        },
+        "author": {
+          "type": "string",
+          "description": "The author of the e-book."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the e-book."
+        },
+        "genre": {
+          "type": "string",
+          "description": "The genre of the e-book."
+        },
+        "publishYear": {
+          "type": "number",
+          "description": "The year the e-book was published."
+        },
+        "language": {
+          "type": "string",
+          "description": "The language of the e-book."
+        },
+        "coverImageURL": {
+          "type": "string",
+          "description": "URL of the e-book's cover image.",
+          "format": "uri"
+        },
+        "fileURL": {
+          "type": "string",
+          "description": "URL of the e-book file.",
+          "format": "uri"
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "The size of the e-book file in bytes."
+        },
+        "pageCount": {
+          "type": "number",
+          "description": "The number of pages in the e-book."
+        },
+        "averageRating": {
+          "type": "number",
+          "description": "The average rating of the e-book."
+        },
+        "totalReviews": {
+          "type": "number",
+          "description": "The total number of reviews for the e-book."
+        },
+        "uploadedBy": {
+          "type": "string",
+          "description": "Reference to User who uploaded the book. (Relationship: User 1:N Ebook)"
+        },
+        "downloads": {
+          "type": "number",
+          "description": "The number of times the e-book has been downloaded."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the e-book was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the e-book was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "author",
+        "description",
+        "genre",
+        "coverImageURL",
+        "fileURL"
+      ]
+    },
+    "ReadingProgress": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ReadingProgress",
+      "type": "object",
+      "description": "Represents a user's reading progress for a specific e-book.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the reading progress entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ReadingProgress)"
+        },
+        "ebookId": {
+          "type": "string",
+          "description": "Reference to Ebook. (Relationship: Ebook 1:N ReadingProgress)"
+        },
+        "currentPage": {
+          "type": "number",
+          "description": "The current page the user is on."
+        },
+        "totalPages": {
+          "type": "number",
+          "description": "The total number of pages in the e-book."
+        },
+        "percentage": {
+          "type": "number",
+          "description": "The reading progress percentage."
+        },
+        "lastReadAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the e-book was last read.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "ebookId",
+        "totalPages"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a user's review of an e-book.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the review entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User who created the review. (Relationship: User 1:N Review)"
+        },
+        "ebookId": {
+          "type": "string",
+          "description": "Reference to Ebook being reviewed. (Relationship: Ebook 1:N Review)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The user's rating of the e-book (1-5)."
+        },
+        "reviewText": {
+          "type": "string",
+          "description": "The user's review text."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the review was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the review was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "ebookId",
+        "rating"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  firebaseUid must match {userId}.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID associated with the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/ebooks/{ebookId}",
+        "definition": {
+          "entityName": "Ebook",
+          "schema": {
+            "$ref": "#/backend/entities/Ebook"
+          },
+          "description": "Stores e-book metadata.",
+          "params": [
+            {
+              "name": "ebookId",
+              "description": "Unique identifier for the ebook entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/library/{ebookId}",
+        "definition": {
+          "entityName": "Ebook",
+          "schema": {
+            "$ref": "#/backend/entities/Ebook"
+          },
+          "description": "Represents the many-to-many relationship between users and e-books (a user's library).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID associated with the user."
+            },
+            {
+              "name": "ebookId",
+              "description": "Unique identifier for the ebook entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/favorites/{ebookId}",
+        "definition": {
+          "entityName": "Ebook",
+          "schema": {
+            "$ref": "#/backend/entities/Ebook"
+          },
+          "description": "Represents the e-books a user has marked as favorites.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID associated with the user."
+            },
+            {
+              "name": "ebookId",
+              "description": "Unique identifier for the ebook entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/readingProgress/{ebookId}",
+        "definition": {
+          "entityName": "ReadingProgress",
+          "schema": {
+            "$ref": "#/backend/entities/ReadingProgress"
+          },
+          "description": "Holds the user's reading progress for each e-book.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID associated with the user."
+            },
+            {
+              "name": "ebookId",
+              "description": "Unique identifier for the ebook entity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/ebooks/{ebookId}/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Reviews are stored as a subcollection of the `/ebooks/{ebookId}` document.",
+          "params": [
+            {
+              "name": "ebookId",
+              "description": "Unique identifier for the ebook entity."
+            },
+            {
+              "name": "reviewId",
+              "description": "Unique identifier for the review entity."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the EBookVerse application, prioritizing security, scalability, and debuggability as per the core design principles. Authorization Independence is achieved through path-based ownership for user-specific data and denormalization where necessary. DBAC is enforced by relying solely on `request.auth.uid` for authorization. Rules are designed to avoid being filters by leveraging structural segregation.\n\n1.  **Users Collection (`/users/{userId}`):** Stores user profiles. User data is directly accessible only to the authenticated user. Profile information is kept here.\n2.  **Ebooks Collection (`/ebooks/{ebookId}`):** Stores e-book metadata. This collection contains general information about each e-book. No user-specific data resides here.\n3.  **User Libraries (`/users/{userId}/library/{ebookId}`):** Represents the many-to-many relationship between users and e-books (a user's library). This subcollection stores only references to ebooks in the main `/ebooks` collection.  This approach avoids duplicating ebook data and keeps user-specific library information separate. `ebookId` serves as the document ID.\n4.  **User Favorites (`/users/{userId}/favorites/{ebookId}`):** Similar to the user library, this subcollection represents the e-books a user has marked as favorites. It resides under the user document and contains references to e-books.\n5.  **Reading Progress (`/users/{userId}/readingProgress/{ebookId}`):** This subcollection holds the user's reading progress for each e-book. Because it's nested under the user, security rules are simplified, ensuring only the user can access their own progress.  The document ID will be the `ebookId`.\n6.  **Reviews (`/ebooks/{ebookId}/reviews/{reviewId}`):** Reviews are stored as a subcollection of the `/ebooks/{ebookId}` document. This allows easy querying for reviews associated with a particular e-book. The review also contains the `userId` for identifying the reviewer and can be used for security rules if needed."
+  }
+}
