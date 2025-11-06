@@ -28,10 +28,11 @@ import {
 } from "lucide-react";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import placeholderImagesData from "@/lib/placeholder-images.json";
-import { useAuth, useUser, useFirestore } from "@/firebase";
+import { useAuth, useUser, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { useEffect, useState } from "react";
 import {motion} from 'framer-motion';
 import { mockBooks } from "@/lib/mock-data";
+import type { Book as BookType } from "@/components/book-card";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -58,20 +59,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function seedDatabase() {
         if (firestore) {
-            const { getDocs, collection } = await import('firebase/firestore');
+            const { getDocs, collection, writeBatch, doc } = await import('firebase/firestore');
             const ebooksCollection = collection(firestore, 'ebooks');
-            const snapshot = await getDocs(ebooksCollection);
-            if (snapshot.empty) {
-                console.log('No books found, seeding database...');
-                const { setDoc, doc, writeBatch } = await import('firebase/firestore');
-                const batch = writeBatch(firestore);
-                mockBooks.forEach((book) => {
-                    const bookRef = doc(ebooksCollection, book.id);
-                    batch.set(bookRef, book);
-                });
-                await batch.commit();
-                console.log('Database seeded with mock books.');
-                // Optionally, trigger a refresh or state update if needed
+            
+            try {
+                const snapshot = await getDocs(ebooksCollection);
+                if (snapshot.empty) {
+                    console.log('No books found, seeding database...');
+                    const batch = writeBatch(firestore);
+                    mockBooks.forEach((book) => {
+                        const bookRef = doc(ebooksCollection, book.id);
+                        batch.set(bookRef, book);
+                    });
+                    
+                    // The batch.commit() is a non-blocking operation here.
+                    // We attach a .catch to handle potential permission errors.
+                    batch.commit().catch(serverError => {
+                        console.log('Batch commit failed. This may be a permissions issue.');
+                        // For a batch write, we can create a representative error.
+                        // We'll use the collection path as a general indicator.
+                        const permissionError = new FirestorePermissionError({
+                            path: ebooksCollection.path,
+                            operation: 'write', // Batch write involves creating/setting documents
+                            requestResourceData: mockBooks.reduce((acc, book) => {
+                                acc[book.id] = book;
+                                return acc;
+                            }, {} as Record<string, BookType>),
+                        });
+                        errorEmitter.emit('permission-error', permissionError);
+                    });
+
+                    console.log('Database seeding initiated.');
+                }
+            } catch (error) {
+                // This catch block handles errors from getDocs.
+                 if (error instanceof Error && error.message.includes('permission-denied')) {
+                     const permissionError = new FirestorePermissionError({
+                         path: ebooksCollection.path,
+                         operation: 'list' // getDocs is a 'list' operation
+                     });
+                     errorEmitter.emit('permission-error', permissionError);
+                 } else {
+                    console.error("An unexpected error occurred during database seeding:", error);
+                 }
             }
         }
     }
