@@ -9,6 +9,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { useAuth, useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 // Function to split text into pages
 const paginateContent = (text: string, charsPerPage: number): string[] => {
@@ -39,6 +42,9 @@ const paginateContent = (text: string, charsPerPage: number): string[] => {
 export default function ReadPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const id = params.id as string;
   const book = mockBooks.find((b) => b.id === id);
 
@@ -47,30 +53,44 @@ export default function ReadPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const charsPerPage = 1500; // Adjust as needed for comfortable reading
+  const charsPerPage = 1500;
+
+  const readingProgressRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !id) return null;
+    return doc(firestore, 'users', user.uid, 'readingProgress', id);
+  }, [firestore, user?.uid, id]);
+
+  const { data: readingProgress, isLoading: isLoadingProgress } = useDoc(readingProgressRef);
+
+  useEffect(() => {
+    if (!isLoadingProgress && readingProgress) {
+        const pageFromProgress = Math.floor(((readingProgress.currentPage ?? 0) / (readingProgress.totalPages ?? 1)) * pages.length);
+        setCurrentPage(pageFromProgress);
+    }
+  }, [readingProgress, isLoadingProgress, pages.length]);
+  
 
   const fetchBookContent = useCallback(async (bookId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-        // Use a CORS proxy to bypass browser restrictions
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const bookUrl = `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`;
-        const response = await fetch(`${proxyUrl}${encodeURIComponent(bookUrl)}`);
+        let response = await fetch(`${proxyUrl}${encodeURIComponent(bookUrl)}`);
         
         if (!response.ok) {
-            // Fallback for different URL structure
             const fallbackUrl = `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`;
-            const fallbackResponse = await fetch(`${proxyUrl}${encodeURIComponent(fallbackUrl)}`);
-            if (!fallbackResponse.ok) {
-                throw new Error(`Failed to fetch book content for ID ${bookId}. Status: ${fallbackResponse.status}`);
-            }
-            const text = await fallbackResponse.text();
-            setPages(paginateContent(text, charsPerPage));
-        } else {
-             const text = await response.text();
-             setPages(paginateContent(text, charsPerPage));
+            response = await fetch(`${proxyUrl}${encodeURIComponent(fallbackUrl)}`);
         }
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch book content for ID ${bookId}. Status: ${response.status}`);
+        }
+
+        const text = await response.text();
+        const paginated = paginateContent(text, charsPerPage);
+        setPages(paginated);
+
     } catch (e: any) {
         console.error("Failed to fetch book content:", e);
         setError("Could not load the book content. Please try again later.");
@@ -84,7 +104,27 @@ export default function ReadPage() {
       fetchBookContent(id);
     }
   }, [id, fetchBookContent]);
+
+  const updateReadingProgress = useCallback((page: number, total: number) => {
+    if (!readingProgressRef || total === 0) return;
+    
+    const percentage = Math.round(((page + 1) / total) * 100);
+    const progressData = {
+      userId: user?.uid,
+      ebookId: id,
+      currentPage: page + 1,
+      totalPages: total,
+      percentage: percentage,
+      lastReadAt: new Date().toISOString(),
+    };
+    setDocumentNonBlocking(readingProgressRef, progressData, { merge: true });
+  }, [readingProgressRef, id, user?.uid]);
   
+  useEffect(() => {
+    if (pages.length > 0) {
+      updateReadingProgress(currentPage, pages.length);
+    }
+  }, [currentPage, pages.length, updateReadingProgress]);
 
   if (!book) {
     return notFound();
@@ -106,9 +146,10 @@ export default function ReadPage() {
 
   const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
 
+  const pageIsLoading = isLoading || isLoadingProgress;
+
   return (
     <div className="flex flex-col h-full">
-        {/* Header */}
         <header className="flex items-center justify-between p-4 border-b bg-background sticky top-[56px] md:top-[60px] z-10">
             <div className='flex-1'>
                  <Button variant="ghost" size="sm" onClick={() => router.back()}>
@@ -130,11 +171,10 @@ export default function ReadPage() {
             </div>
         </header>
 
-        {/* Content */}
         <div className="flex-grow overflow-auto p-4 md:p-8">
             <Card className='max-w-4xl mx-auto'>
                  <CardContent className="p-6 md:p-8 text-lg leading-relaxed whitespace-pre-line font-serif min-h-[60vh] flex items-center justify-center">
-                   {isLoading ? (
+                   {pageIsLoading ? (
                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                    ) : error ? (
                        <div className="text-center text-destructive">
@@ -150,13 +190,12 @@ export default function ReadPage() {
             </Card>
         </div>
         
-        {/* Footer */}
         <footer className="p-4 border-t bg-background sticky bottom-0 z-10">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
                 <Button
                     variant="outline"
                     onClick={handlePrevPage}
-                    disabled={currentPage === 0 || isLoading}
+                    disabled={currentPage === 0 || pageIsLoading}
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
@@ -173,7 +212,7 @@ export default function ReadPage() {
                 <Button
                     variant="outline"
                     onClick={handleNextPage}
-                    disabled={currentPage === totalPages - 1 || isLoading}
+                    disabled={currentPage === totalPages - 1 || pageIsLoading}
                 >
                     Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
