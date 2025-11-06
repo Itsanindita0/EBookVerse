@@ -130,7 +130,7 @@ export default function ReadPage() {
     setIsLoading(true);
     setError(null);
     try {
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const proxyUrl = 'https://corsproxy.io/?';
         const bookUrl = `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`;
         let response = await fetch(`${proxyUrl}${encodeURIComponent(bookUrl)}`);
         
