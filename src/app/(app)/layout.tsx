@@ -23,7 +23,7 @@ import {
   Search,
   Settings,
   Upload,
-  User,
+  User as UserIcon,
 } from "lucide-react";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import placeholderImagesData from "@/lib/placeholder-images.json";
@@ -42,10 +42,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/search", label: "Browse", icon: Search },
     { href: "/upload", label: "Upload Book", icon: Upload }, // TODO: Admin only
   ];
-
-  const userAvatar = placeholderImagesData.placeholderImages.find(
-    (p) => p.id === "user-avatar"
-  );
   
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -155,18 +151,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src={user.photoURL ?? userAvatar?.imageUrl} />
+                  <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? 'User'} />
                   <AvatarFallback>{user.email?.[0]?.toUpperCase() ?? "U"}</AvatarFallback>
                 </Avatar>
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{user.displayName ?? user.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/profile">
-                  <User className="mr-2 h-4 w-4" />
+                  <UserIcon className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
