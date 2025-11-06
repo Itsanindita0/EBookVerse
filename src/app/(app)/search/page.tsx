@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Book } from '@/components/book-card';
 import { BookCard } from '@/components/book-card';
 import { BookListItem } from '@/components/book-list-item';
-import { mockBooks } from '@/lib/mock-data';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -14,8 +13,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { List, Grid, Search } from 'lucide-react';
+import { List, Grid, Search, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { searchBooks } from '@/ai/flows/search-books-flow';
+import { useDebounce } from 'use-debounce';
 
 type SortOption = 'title-asc' | 'title-desc' | 'author-asc' | 'author-desc';
 type Layout = 'grid' | 'list';
@@ -25,31 +26,43 @@ export default function SearchPage() {
   const [sortOption, setSortOption] = useState<SortOption>('title-asc');
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [layout, setLayout] = useState<Layout>('grid');
+  const [books, setBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
-  const genres = useMemo(() => {
-    const allGenres = new Set(mockBooks.map((book) => book.genre));
-    return ['all', ...Array.from(allGenres)];
+  const handleSearch = useCallback(async (query: string) => {
+    setIsLoading(true);
+    try {
+      const result = await searchBooks({ query });
+      setBooks(result.books);
+    } catch (error) {
+      console.error("Error searching books:", error);
+      setBooks([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    handleSearch(debouncedSearchTerm);
+  }, [debouncedSearchTerm, handleSearch]);
+
+  const genres = useMemo(() => {
+    if (books.length === 0) return ['all'];
+    const allGenres = new Set(books.map((book) => book.genre));
+    return ['all', ...Array.from(allGenres)];
+  }, [books]);
+
   const filteredAndSortedBooks = useMemo(() => {
-    let books = [...mockBooks];
+    let filtered = [...books];
 
     // Filter by genre
     if (selectedGenre !== 'all') {
-      books = books.filter((book) => book.genre === selectedGenre);
-    }
-
-    // Filter by search term
-    if (searchTerm) {
-      books = books.filter(
-        (book) =>
-          book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          book.author.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter((book) => book.genre === selectedGenre);
     }
 
     // Sort books
-    books.sort((a, b) => {
+    filtered.sort((a, b) => {
       switch (sortOption) {
         case 'title-asc':
           return a.title.localeCompare(b.title);
@@ -64,8 +77,8 @@ export default function SearchPage() {
       }
     });
 
-    return books;
-  }, [searchTerm, sortOption, selectedGenre]);
+    return filtered;
+  }, [books, sortOption, selectedGenre]);
 
   return (
     <div className="space-y-6">
@@ -128,29 +141,33 @@ export default function SearchPage() {
                 </TabsTrigger>
             ))}
         </TabsList>
-
-        <TabsContent value={selectedGenre}>
-            {filteredAndSortedBooks.length > 0 ? (
-                layout === 'grid' ? (
-                <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mt-6">
-                    {filteredAndSortedBooks.map((book) => (
-                    <BookCard key={book.id} book={book} />
-                    ))}
-                </div>
-                ) : (
-                <div className="mt-6 space-y-4">
-                    {filteredAndSortedBooks.map((book) => (
-                        <BookListItem key={book.id} book={book} />
-                    ))}
-                </div>
-                )
+        
+        <div className="mt-6">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : filteredAndSortedBooks.length > 0 ? (
+            layout === 'grid' ? (
+              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {filteredAndSortedBooks.map((book) => (
+                  <BookCard key={book.id} book={book} />
+                ))}
+              </div>
             ) : (
-                <div className="text-center py-16">
-                    <p className="text-lg font-semibold">No books found.</p>
-                    <p className="text-muted-foreground">Try adjusting your search or filters.</p>
-                </div>
-            )}
-        </TabsContent>
+              <div className="space-y-4">
+                {filteredAndSortedBooks.map((book) => (
+                  <BookListItem key={book.id} book={book} />
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-lg font-semibold">No books found.</p>
+              <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+            </div>
+          )}
+        </div>
       </Tabs>
     </div>
   );
