@@ -24,7 +24,8 @@ const BookSchema = z.object({
     imageHint: z.string().describe("Two keywords for the cover image, for AI hint."),
     genre: z.string().describe("The genre of the book."),
     rating: z.number().describe("The book's rating, on a scale of 1-5."),
-    description: z.string().describe("A short description of the book.")
+    description: z.string().describe("A short description of the book."),
+    price: z.number().describe("The price of the book."),
 });
 
 const SearchBooksOutputSchema = z.object({
@@ -43,7 +44,7 @@ const prompt = ai.definePrompt({
   name: 'searchBooksPrompt',
   input: {schema: SearchBooksInputSchema},
   output: {schema: SearchBooksOutputSchema},
-  prompt: `You are a book search engine. Based on the user's query, find relevant books. Return a list of books with their title, author, genre, a short description, and a rating. 
+  prompt: `You are a book search engine. Based on the user's query, find relevant books. Return a list of books with their title, author, genre, a short description, a rating, and a price.
 For each book, provide a unique ID (you can generate one if not available) and a placeholder cover image URL from picsum.photos (e.g., https://picsum.photos/seed/random-string/300/450). Also provide a two-word image hint for the cover.
 
 User Query: {{query}}

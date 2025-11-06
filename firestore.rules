@@ -8,9 +8,8 @@
  * Data Structure:
  * - /users/{userId}: Stores user profiles, accessible only to the owning user.
  * - /ebooks/{ebookId}: Stores public ebook metadata, readable by everyone.
- * - /users/{userId}/library/{ebookId}: Represents a user's library, accessible only to the owning user.
- * - /users/{userId}/favorites/{ebookId}: Represents a user's favorite ebooks, accessible only to the owning user.
- * - /users/{userId}/readingProgress/{ebookId}: Stores reading progress, accessible only to the owning user.
+ * - /users/{userId}/library/{ebookId}: Represents a user's purchased books, accessible only to the owning user.
+ * - /users/{userId}/cart/{ebookId}: Represents a user's shopping cart, accessible only to the owning user.
  * - /ebooks/{ebookId}/reviews/{reviewId}: Stores reviews for ebooks, accessible for read to everyone, only authenticated users can write.
  *
  * Key Security Decisions:
@@ -77,7 +76,7 @@ service cloud.firestore {
     /**
      * @description Rules for the /users/{userId}/library collection. Enforces user-ownership.
      * @path /users/{userId}/library/{ebookId}
-     * @allow (create, get, list, update, delete) - Allows the user to manage their own library.
+     * @allow (create, get, list, update, delete) - Allows the user to manage their own library of purchased books.
      * @deny (create, update, delete) - Denies modification if the user does not exist.
      * @principle Enforces user-ownership for library data.
      */
@@ -103,15 +102,15 @@ service cloud.firestore {
 
       allow delete: if isExistingOwner(userId);
     }
-
+    
     /**
-     * @description Rules for the /users/{userId}/favorites collection. Enforces user-ownership.
-     * @path /users/{userId}/favorites/{ebookId}
-     * @allow (create, get, list, update, delete) - Allows the user to manage their own favorites.
-     * @deny (create, update, delete) - Denies modification if the user does not exist.
-     * @principle Enforces user-ownership for favorites data.
+     * @description Rules for the /users/{userId}/cart collection. Enforces user-ownership.
+     * @path /users/{userId}/cart/{ebookId}
+     * @allow (create, get, list, update, delete) - Allows the user to manage their own shopping cart.
+     * @deny (create, update, delete) - Denies modification if the user is not the owner.
+     * @principle Enforces user-ownership for cart data.
      */
-    match /users/{userId}/favorites/{ebookId} {
+    match /users/{userId}/cart/{ebookId} {
       function isSignedIn() {
         return request.auth != null;
       }
@@ -124,45 +123,9 @@ service cloud.firestore {
         return isOwner(userId) && resource != null;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-
-      allow update: if isExistingOwner(userId);
-
-      allow delete: if isExistingOwner(userId);
+      allow get, list, create, update, delete: if isOwner(userId);
     }
 
-    /**
-     * @description Rules for the /users/{userId}/readingProgress collection. Enforces user-ownership.
-     * @path /users/{userId}/readingProgress/{ebookId}
-     * @allow (create, get, list, update, delete) - Allows the user to manage their own reading progress.
-     * @deny (create, update, delete) - Denies modification if the user does not exist.
-     * @principle Enforces user-ownership for reading progress data.
-     */
-    match /users/{userId}/readingProgress/{ebookId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-
-      allow update: if isExistingOwner(userId);
-
-      allow delete: if isExistingOwner(userId);
-    }
 
     /**
      * @description Rules for the /ebooks/{ebookId}/reviews collection. Allows read to all, write only if authenticated.

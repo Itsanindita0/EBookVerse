@@ -10,6 +10,7 @@ export const mockBooks: Book[] = [
     genre: "Romance",
     rating: 4.8,
     description: "A classic novel of manners, following the turbulent relationship between Elizabeth Bennet and Fitzwilliam Darcy.",
+    price: 12.99,
   },
   {
     id: "84", // Frankenstein
@@ -20,6 +21,7 @@ export const mockBooks: Book[] = [
     genre: "Gothic",
     rating: 4.6,
     description: "The story of a young science student who creates a sapient creature in an unorthodox scientific experiment.",
+    price: 9.99,
   },
   {
     id: "11", // Alice's Adventures in Wonderland
@@ -30,6 +32,7 @@ export const mockBooks: Book[] = [
     genre: "Fantasy",
     rating: 4.5,
     description: "A young girl named Alice falls through a rabbit hole into a fantasy world populated by peculiar, anthropomorphic creatures.",
+    price: 7.50,
   },
   {
     id: "1661", // The Adventures of Sherlock Holmes
@@ -40,6 +43,7 @@ export const mockBooks: Book[] = [
     genre: "Mystery",
     rating: 4.7,
     description: "A collection of twelve short stories featuring the famous detective Sherlock Holmes.",
+    price: 10.00,
   },
   {
     id: "2701", // Moby Dick
@@ -50,6 +54,7 @@ export const mockBooks: Book[] = [
     genre: "Adventure",
     rating: 4.4,
     description: "The narrative of the sailor Ishmael's perilous voyage aboard the whaling ship Pequod, led by the monomaniacal Captain Ahab.",
+    price: 11.99,
   },
   {
     id: "98", // A Tale of Two Cities
@@ -60,6 +65,7 @@ export const mockBooks: Book[] = [
     genre: "Historical",
     rating: 4.6,
     description: "A historical novel set in London and Paris before and during the French Revolution.",
+    price: 8.99,
   },
    {
     id: "64317", // The Great Gatsby
@@ -70,6 +76,7 @@ export const mockBooks: Book[] = [
     genre: "Classic",
     rating: 4.7,
     description: "A novel about the American dream, set in the Jazz Age on Long Island.",
+    price: 14.00,
   },
   {
     id: "76", // To Kill a Mockingbird - Not on Gutenberg, using another classic
@@ -80,6 +87,7 @@ export const mockBooks: Book[] = [
     genre: "Classic",
     rating: 4.8,
     description: "A novel about a young boy's adventures on the Mississippi River with a runaway slave.",
+    price: 10.50,
   },
   {
     id: "236", // The Jungle Book
@@ -90,6 +98,7 @@ export const mockBooks: Book[] = [
     genre: "Adventure",
     rating: 4.7,
     description: "A collection of stories about the adventures of a boy named Mowgli who is raised by wolves in the Indian jungle.",
+    price: 9.99,
   },
   {
     id: "7164", // Gitanjali
@@ -100,6 +109,7 @@ export const mockBooks: Book[] = [
     genre: "Poetry",
     rating: 4.9,
     description: "A collection of prose poems, for which Tagore was awarded the Nobel Prize in Literature.",
+    price: 15.00,
   },
   {
     id: "2226", // Kim
@@ -110,6 +120,7 @@ export const mockBooks: Book[] = [
     genre: "Adventure",
     rating: 4.6,
     description: "An adventure novel about the orphan son of an Irish soldier who grows up in British India.",
+    price: 11.00,
   },
   {
     id: "7166", // The Home and the World
@@ -120,5 +131,6 @@ export const mockBooks: Book[] = [
     genre: "Historical",
     rating: 4.5,
     description: "A novel exploring the complexities of tradition, modernity, and nationalism in early 20th-century Bengal.",
+    price: 12.50,
   },
 ];

@@ -92,8 +92,8 @@ export default function LibraryPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-            <h1 className="text-3xl font-bold font-headline">My Library</h1>
-            <p className="text-muted-foreground">Browse and manage your book collection.</p>
+            <h1 className="text-3xl font-bold font-headline">My Purchased Books</h1>
+            <p className="text-muted-foreground">Browse your collection of purchased books.</p>
         </div>
         <div className="flex items-center gap-2">
             <Button
@@ -168,7 +168,7 @@ export default function LibraryPage() {
             ) : (
                 <div className="text-center py-16">
                     <p className="text-lg font-semibold">Your library is empty.</p>
-                    <p className="text-muted-foreground">Add books from the browse section to get started.</p>
+                    <p className="text-muted-foreground">Purchase books from the browse section to get started.</p>
                 </div>
             )}
         </TabsContent>

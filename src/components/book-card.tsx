@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Star, Bookmark } from "lucide-react";
+import { Star, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useToast } from "@/hooks/use-toast";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export type Book = {
   id: string;
@@ -26,6 +28,7 @@ export type Book = {
   genre: string;
   rating: number;
   description: string;
+  price: number;
 };
 
 type BookCardProps = {
@@ -35,30 +38,34 @@ type BookCardProps = {
 export function BookCard({ book }: BookCardProps) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
-  const libraryDocRef = useMemoFirebase(() => {
+  const cartDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return doc(firestore, 'users', user.uid, 'library', book.id);
+    return doc(firestore, 'users', user.uid, 'cart', book.id);
   }, [firestore, user?.uid, book.id]);
 
-  const { data: libraryDoc } = useDoc(libraryDocRef);
+  const { data: cartDoc } = useDoc(cartDocRef);
 
-  const isInLibrary = !!libraryDoc;
+  const isInCart = !!cartDoc;
 
-  const toggleLibraryStatus = async () => {
-    if (!libraryDocRef) return;
+  const handleAddToCart = () => {
+    if (!cartDocRef) return;
 
-    if (isInLibrary) {
-      await deleteDoc(libraryDocRef);
+    if (isInCart) {
+      // Optional: Navigate to cart or show message
+      toast({ title: "Already in Cart", description: `${book.title} is already in your shopping cart.` });
     } else {
-      await setDoc(libraryDocRef, book);
+      const cartItem = { ...book, quantity: 1 };
+      setDocumentNonBlocking(cartDocRef, cartItem);
+      toast({ title: "Added to Cart", description: `${book.title} has been added to your cart.` });
     }
   };
 
   return (
     <Card className="flex flex-col overflow-hidden h-full group border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1">
       <CardHeader className="p-0 relative overflow-hidden">
-        <Link href={`/read/${book.id}`}>
+        <Link href={`/book/${book.id}`}>
           <Image
             src={book.coverImage}
             alt={`Cover of ${book.title}`}
@@ -75,7 +82,7 @@ export function BookCard({ book }: BookCardProps) {
         </Badge>
         <CardTitle className="text-lg leading-tight font-headline">
           <Link
-            href={`/read/${book.id}`}
+            href={`/book/${book.id}`}
             className="hover:text-primary transition-colors line-clamp-2"
           >
             {book.title}
@@ -85,19 +92,18 @@ export function BookCard({ book }: BookCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <div className="flex items-center gap-1">
-          <Star className="w-4 h-4 text-accent fill-current" />
-          <span className="text-sm font-bold text-foreground/80">
-            {book.rating.toFixed(1)}
+          <span className="text-lg font-bold text-primary">
+            ${book.price.toFixed(2)}
           </span>
         </div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           className="text-muted-foreground hover:text-primary"
-          aria-label="Add to library"
-          onClick={toggleLibraryStatus}
+          aria-label="Add to cart"
+          onClick={handleAddToCart}
         >
-          <Bookmark className={`w-5 h-5 ${isInLibrary ? 'text-primary fill-primary' : ''}`} />
+          <ShoppingCart className={`w-5 h-5 ${isInCart ? 'text-primary fill-primary' : ''}`} />
         </Button>
       </CardFooter>
     </Card>

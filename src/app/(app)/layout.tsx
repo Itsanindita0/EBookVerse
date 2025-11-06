@@ -22,6 +22,7 @@ import {
   Menu,
   Search,
   Settings,
+  ShoppingCart,
   Upload,
   User as UserIcon,
 } from "lucide-react";
@@ -39,7 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/library", label: "My Library", icon: Library },
+    { href: "/library", label: "My Purchases", icon: Library },
     { href: "/search", label: "Browse", icon: Search },
     { href: "/upload", label: "Upload Book", icon: Upload }, // TODO: Admin only
   ];
@@ -147,6 +148,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </form>
           </div>
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/cart">
+              <ShoppingCart className="h-5 w-5" />
+              <span className="sr-only">Shopping Cart</span>
+            </Link>
+          </Button>
           <ModeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
