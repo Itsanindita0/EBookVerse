@@ -61,17 +61,23 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /ebooks collection. Allows public read access.
+     * @description Rules for the /ebooks collection. Allows public read access. Authenticated users can create.
      * @path /ebooks/{ebookId}
      * @allow (get, list) - Allows anyone to read ebook metadata.
-     * @deny (create, update, delete) - Denies all write operations to ebook metadata.
-     * @principle Allows public read access to ebook metadata.
+     * @allow (create) - Allows authenticated users to create ebooks.
+     * @deny (update, delete) - Denies modification of ebooks.
+     * @principle Allows public read, restricted write to ebook metadata.
      */
     match /ebooks/{ebookId} {
+       function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get: if true;
       allow list: if true;
 
-      allow create, update, delete: if false; // Ebooks can only be created by admins via the backend.
+      allow create: if isSignedIn();
+      allow update, delete: if false; // For now, prevent modification.
     }
 
     /**
