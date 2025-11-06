@@ -13,31 +13,79 @@ import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-// Function to split text into pages
-const paginateContent = (text: string, charsPerPage: number): string[] => {
+// Function to clean and split text into pages
+const processAndPaginateContent = (text: string, charsPerPage: number): string[] => {
   if (!text) return [];
-  const pages = [];
-  let start = 0;
-  while (start < text.length) {
-    let end = start + charsPerPage;
-    if (end < text.length) {
-      // Try to find a natural break (end of paragraph or sentence)
-      let breakPoint = text.lastIndexOf('\n\n', end);
-      if (breakPoint <= start) {
-        breakPoint = text.lastIndexOf('\n', end);
-      }
-      if (breakPoint <= start) {
-        breakPoint = text.lastIndexOf('. ', end);
-      }
-      if (breakPoint > start) {
-        end = breakPoint + 1;
+
+  // 1. Clean the text: Remove Project Gutenberg headers/footers
+  let cleanedText = text;
+  
+  // Find start of content
+  const startMarkers = [
+    '*** START OF THE PROJECT GUTENBERG EBOOK',
+    '*** START OF THIS PROJECT GUTENBERG EBOOK',
+    'THE SMALL PRINT! FOR PUBLIC DOMAIN ETEXTS',
+  ];
+  let startIndex = -1;
+  for (const marker of startMarkers) {
+    const foundIndex = cleanedText.indexOf(marker);
+    if (foundIndex !== -1) {
+      startIndex = cleanedText.indexOf('***', foundIndex + marker.length);
+      if (startIndex !== -1) {
+        startIndex += 3; // Move past the '***'
+        break;
       }
     }
-    pages.push(text.substring(start, end));
-    start = end;
   }
-  return pages;
+  if (startIndex !== -1) {
+    cleanedText = cleanedText.substring(startIndex);
+  }
+
+  // Find end of content
+  const endMarkers = [
+    '*** END OF THE PROJECT GUTENBERG EBOOK',
+    '*** END OF THIS PROJECT GUTENBERG EBOOK',
+    'End of the Project Gutenberg EBook',
+  ];
+  let endIndex = -1;
+  for (const marker of endMarkers) {
+    endIndex = cleanedText.indexOf(marker);
+    if (endIndex !== -1) break;
+  }
+  if (endIndex !== -1) {
+    cleanedText = cleanedText.substring(0, endIndex);
+  }
+
+  cleanedText = cleanedText.trim();
+
+  // 2. Paginate the cleaned content
+  const pages = [];
+  let currentPosition = 0;
+  while (currentPosition < cleanedText.length) {
+    let endPosition = currentPosition + charsPerPage;
+    
+    if (endPosition >= cleanedText.length) {
+      endPosition = cleanedText.length;
+    } else {
+      // Find a good breaking point (paragraph, then sentence)
+      let breakPoint = cleanedText.lastIndexOf('\n\n', endPosition);
+      if (breakPoint <= currentPosition) {
+        breakPoint = cleanedText.lastIndexOf('\n', endPosition);
+      }
+      if (breakPoint <= currentPosition) {
+        breakPoint = cleanedText.lastIndexOf('. ', endPosition);
+      }
+      if (breakPoint > currentPosition) {
+        endPosition = breakPoint + 1; // Include the breaking character
+      }
+    }
+
+    pages.push(cleanedText.substring(currentPosition, endPosition).trim());
+    currentPosition = endPosition;
+  }
+  return pages.filter(page => page.length > 0);
 };
+
 
 export default function ReadPage() {
   const params = useParams();
@@ -53,7 +101,7 @@ export default function ReadPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const charsPerPage = 1500;
+  const charsPerPage = 1800; // Increased for a better reading experience
 
   const readingProgressRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !id) return null;
@@ -65,11 +113,13 @@ export default function ReadPage() {
   useEffect(() => {
     if (!isLoadingProgress && readingProgress && pages.length > 0) {
         // Restore current page based on percentage to handle pagination changes
-        const pageFromProgress = Math.floor(((readingProgress.percentage ?? 0) / 100) * pages.length);
+        const pageFromProgress = Math.floor(((readingProgress.percentage ?? 0) / 100) * (pages.length - 1));
         const validPage = Math.max(0, Math.min(pageFromProgress, pages.length - 1));
-        setCurrentPage(validPage);
+        if (currentPage !== validPage) {
+            setCurrentPage(validPage);
+        }
     }
-  }, [readingProgress, isLoadingProgress, pages.length]);
+  }, [readingProgress, isLoadingProgress, pages, currentPage]);
   
 
   const fetchBookContent = useCallback(async (bookId: string) => {
@@ -90,14 +140,14 @@ export default function ReadPage() {
         }
 
         const text = await response.text();
-        const paginated = paginateContent(text, charsPerPage);
+        const paginated = processAndPaginateContent(text, charsPerPage);
         setPages(paginated);
 
         if (!isLoadingProgress && readingProgress) {
-            const pageFromProgress = Math.floor(((readingProgress.percentage ?? 0) / 100) * paginated.length);
+            const pageFromProgress = Math.floor(((readingProgress.percentage ?? 0) / 100) * (paginated.length - 1));
             const validPage = Math.max(0, Math.min(pageFromProgress, paginated.length - 1));
             setCurrentPage(validPage);
-        } else {
+        } else if (paginated.length > 0) {
             setCurrentPage(0);
         }
 
@@ -117,19 +167,19 @@ export default function ReadPage() {
   }, [id, fetchBookContent]);
 
   const updateReadingProgress = useCallback(() => {
-    if (!readingProgressRef || pages.length === 0 || !user) return;
+    if (!readingProgressRef || pages.length === 0 || !user || isLoading) return;
     
     const percentage = Math.round(((currentPage + 1) / pages.length) * 100);
     const progressData = {
       userId: user.uid,
       ebookId: id,
-      currentPage: currentPage + 1, // 1-based for storage
+      currentPage: currentPage, // 0-based for internal state
       totalPages: pages.length,
       percentage: percentage,
       lastReadAt: new Date().toISOString(),
     };
     setDocumentNonBlocking(readingProgressRef, progressData, { merge: true });
-  }, [readingProgressRef, currentPage, pages.length, id, user]);
+  }, [readingProgressRef, currentPage, pages.length, id, user, isLoading]);
   
   useEffect(() => {
     // Debounce the update to avoid excessive writes
@@ -164,7 +214,7 @@ export default function ReadPage() {
 
   const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
 
-  const pageIsLoading = isLoading || isLoadingProgress;
+  const pageIsLoading = isLoading || (isLoadingProgress && !readingProgress);
 
   return (
     <div className="flex flex-col h-full">
@@ -202,7 +252,7 @@ export default function ReadPage() {
                    ) : pages.length > 0 ? (
                        pages[currentPage]
                    ) : (
-                       <p>This book appears to be empty.</p>
+                       <p>This book appears to be empty or could not be loaded.</p>
                    )}
                 </CardContent>
             </Card>
