@@ -1,36 +1,96 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { mockBooks } from '@/lib/mock-data';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-// For placeholder content
-const LOREM_IPSUM_PAGES = Array(50)
-  .fill(
-    `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
-  )
-  .map(
-    (text, i) => `Page ${i + 1}\n\n${text}`
-  );
+// Function to split text into pages
+const paginateContent = (text: string, charsPerPage: number): string[] => {
+  if (!text) return [];
+  const pages = [];
+  let start = 0;
+  while (start < text.length) {
+    let end = start + charsPerPage;
+    if (end < text.length) {
+      // Try to find a natural break (end of paragraph or sentence)
+      let breakPoint = text.lastIndexOf('\n\n', end);
+      if (breakPoint <= start) {
+        breakPoint = text.lastIndexOf('\n', end);
+      }
+      if (breakPoint <= start) {
+        breakPoint = text.lastIndexOf('. ', end);
+      }
+      if (breakPoint > start) {
+        end = breakPoint + 1;
+      }
+    }
+    pages.push(text.substring(start, end));
+    start = end;
+  }
+  return pages;
+};
 
 export default function ReadPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   const book = mockBooks.find((b) => b.id === id);
+
+  const [pages, setPages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const charsPerPage = 1500; // Adjust as needed for comfortable reading
+
+  const fetchBookContent = useCallback(async (bookId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        // Use a CORS proxy to bypass browser restrictions
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const bookUrl = `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`;
+        const response = await fetch(`${proxyUrl}${encodeURIComponent(bookUrl)}`);
+        
+        if (!response.ok) {
+            // Fallback for different URL structure
+            const fallbackUrl = `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`;
+            const fallbackResponse = await fetch(`${proxyUrl}${encodeURIComponent(fallbackUrl)}`);
+            if (!fallbackResponse.ok) {
+                throw new Error(`Failed to fetch book content for ID ${bookId}. Status: ${fallbackResponse.status}`);
+            }
+            const text = await fallbackResponse.text();
+            setPages(paginateContent(text, charsPerPage));
+        } else {
+             const text = await response.text();
+             setPages(paginateContent(text, charsPerPage));
+        }
+    } catch (e: any) {
+        console.error("Failed to fetch book content:", e);
+        setError("Could not load the book content. Please try again later.");
+    } finally {
+        setIsLoading(false);
+    }
+  }, [charsPerPage]);
+
+  useEffect(() => {
+    if (id) {
+      fetchBookContent(id);
+    }
+  }, [id, fetchBookContent]);
+  
 
   if (!book) {
     return notFound();
   }
 
-  const totalPages = LOREM_IPSUM_PAGES.length;
+  const totalPages = pages.length;
 
   const handleNextPage = () => {
     if (currentPage < totalPages - 1) {
@@ -44,7 +104,7 @@ export default function ReadPage() {
     }
   };
 
-  const progress = ((currentPage + 1) / totalPages) * 100;
+  const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -73,8 +133,19 @@ export default function ReadPage() {
         {/* Content */}
         <div className="flex-grow overflow-auto p-4 md:p-8">
             <Card className='max-w-4xl mx-auto'>
-                <CardContent className="p-6 md:p-8 text-lg leading-relaxed whitespace-pre-line font-serif">
-                   {LOREM_IPSUM_PAGES[currentPage]}
+                 <CardContent className="p-6 md:p-8 text-lg leading-relaxed whitespace-pre-line font-serif min-h-[60vh] flex items-center justify-center">
+                   {isLoading ? (
+                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                   ) : error ? (
+                       <div className="text-center text-destructive">
+                           <p className="font-semibold">Error</p>
+                           <p>{error}</p>
+                       </div>
+                   ) : pages.length > 0 ? (
+                       pages[currentPage]
+                   ) : (
+                       <p>This book appears to be empty.</p>
+                   )}
                 </CardContent>
             </Card>
         </div>
@@ -85,20 +156,24 @@ export default function ReadPage() {
                 <Button
                     variant="outline"
                     onClick={handlePrevPage}
-                    disabled={currentPage === 0}
+                    disabled={currentPage === 0 || isLoading}
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
                  <div className='flex-grow text-center flex items-center gap-4 justify-center'>
-                    <span className="text-sm text-muted-foreground">
-                        Page {currentPage + 1} of {totalPages}
-                    </span>
-                    <Progress value={progress} className="w-32 h-2" />
+                    {totalPages > 0 && (
+                        <>
+                            <span className="text-sm text-muted-foreground">
+                                Page {currentPage + 1} of {totalPages}
+                            </span>
+                            <Progress value={progress} className="w-32 h-2" />
+                        </>
+                    )}
                 </div>
                 <Button
                     variant="outline"
                     onClick={handleNextPage}
-                    disabled={currentPage === totalPages - 1}
+                    disabled={currentPage === totalPages - 1 || isLoading}
                 >
                     Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
